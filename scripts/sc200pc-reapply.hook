@@ -1,0 +1,17 @@
+# Re-apply the SC200PC PSYS camera configuration whenever the
+# intel-ipu7-camera package is installed or upgraded. That package owns
+# /etc/camera/ipu75xa config, the HAL plugin, the ipu7 DKMS source (which
+# carries the dual-VC overlay), and the firmware; this hook restores the
+# SC200PC-specific state on top of it.
+#
+# Installed by: scripts/sc200pc-apply.sh install-hook
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = intel-ipu7-camera
+
+[Action]
+Description = Re-applying SC200PC PSYS camera configuration after intel-ipu7-camera update...
+When = PostTransaction
+Exec = /usr/local/bin/sc200pc-apply.sh apply

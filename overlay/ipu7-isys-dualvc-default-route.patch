@@ -1,0 +1,117 @@
+--- /usr/src/ipu7-drivers-1.0.5/.sc200pc-overlay-backup/ipu7-isys-subdev.c	2026-07-13 23:30:37.000000000 +0100
++++ /usr/src/ipu7-drivers-1.0.5/drivers/media/pci/intel/ipu7/ipu7-isys-subdev.c	2026-07-17 20:04:23.346925424 +0100
+@@ -184,11 +184,40 @@
+ 	return -EINVAL;
+ }
+ 
++/*
++ * SC200PC DOL2 bring-up overlay (local change, not from Intel).
++ *
++ * The pinned kernel keeps the V4L2 subdev streams API disabled for
++ * userspace, so the second route required by a two-virtual-channel sensor
++ * (sink stream 1 -> source pad 2) cannot be created from media-ctl/HAL.
++ * Provide it as a default route on the selected CSI receiver instead.
++ * Disabled by default; enable with:
++ *   options intel_ipu7_isys dual_vc_port=0
++ *
++ * Route formats default to 1928x1088 SBGGR10 for the selected port because
++ * stream-aware format ioctls are unavailable while the API gate is closed.
++ */
++static int dual_vc_port = -1;
++module_param(dual_vc_port, int, 0444);
++MODULE_PARM_DESC(dual_vc_port,
++		 "CSI2 port that gets a default sink-stream-1 route (two-VC sensor)");
++
++static bool subdev_is_dual_vc(struct v4l2_subdev *sd)
++{
++	char name[16];
++
++	if (dual_vc_port < 0)
++		return false;
++
++	snprintf(name, sizeof(name), "CSI2 %d", dual_vc_port);
++	return strstr(sd->name, name) != NULL;
++}
++
+ static int subdev_set_routing(struct v4l2_subdev *sd,
+ 			      struct v4l2_subdev_state *state,
+ 			      struct v4l2_subdev_krouting *routing)
+ {
+-	static const struct v4l2_mbus_framefmt fmt = {
++	struct v4l2_mbus_framefmt fmt = {
+ 		.width = 4096,
+ 		.height = 3072,
+ 		.code = MEDIA_BUS_FMT_SGRBG10_1X10,
+@@ -197,6 +226,12 @@
+ 	struct v4l2_subdev_route *route;
+ 	int ret;
+ 
++	if (subdev_is_dual_vc(sd)) {
++		fmt.width = 1928;
++		fmt.height = 1088;
++		fmt.code = MEDIA_BUS_FMT_SBGGR10_1X10;
++	}
++
+ 	ret = v4l2_subdev_routing_validate(sd, routing,
+ 					   V4L2_SUBDEV_ROUTING_ONLY_1_TO_1 |
+ 					   V4L2_SUBDEV_ROUTING_NO_SOURCE_MULTIPLEXING);
+@@ -234,18 +269,52 @@
+ static int ipu7_isys_subdev_init_state(struct v4l2_subdev *sd,
+ 				       struct v4l2_subdev_state *state)
+ {
+-	struct v4l2_subdev_route route = {
+-		.sink_pad = 0,
+-		.sink_stream = 0,
+-		.source_pad = 1,
+-		.source_stream = 0,
+-		.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
++	struct v4l2_subdev_route routes[] = {
++		{
++			.sink_pad = 0,
++			.sink_stream = 0,
++			.source_pad = 1,
++			.source_stream = 0,
++			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
++		}, {
++			.sink_pad = 0,
++			.sink_stream = 1,
++			.source_pad = 2,
++			.source_stream = 0,
++			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
++		},
+ 	};
+ 	struct v4l2_subdev_krouting routing = {
+ 		.num_routes = 1,
+-		.routes = &route,
++		.routes = routes,
+ 	};
+ 
++	if (subdev_is_dual_vc(sd) && sd->entity.num_pads > 2) {
++		struct v4l2_rect *crop;
++		u32 pad;
++		int ret;
++
++		routing.num_routes = ARRAY_SIZE(routes);
++		ret = subdev_set_routing(sd, state, &routing);
++		if (ret)
++			return ret;
++
++		/* The ISYS firmware drops frames for streams with a zero
++		 * crop. Userspace format ioctls only cover stream 0 on this
++		 * kernel, so initialize both source-pad crops here.
++		 */
++		for (pad = 1; pad <= 2; pad++) {
++			crop = v4l2_subdev_state_get_crop(state, pad, 0);
++			if (!crop)
++				return -EINVAL;
++			crop->left = 0;
++			crop->top = 0;
++			crop->width = 1928;
++			crop->height = 1088;
++		}
++		return 0;
++	}
++
+ 	return subdev_set_routing(sd, state, &routing);
+ }
+ 

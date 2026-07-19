@@ -1,0 +1,18 @@
+# User-supplied OEM/Intel artifacts (verified by hash, never committed)
+/artifacts/
+
+# Kernel build products
+*.ko
+*.ko.zst
+*.o
+*.mod
+*.mod.c
+*.symvers
+*.order
+.*.cmd
+Module.symvers
+modules.order
+
+# Editor / OS
+*.swp
+.DS_Store
