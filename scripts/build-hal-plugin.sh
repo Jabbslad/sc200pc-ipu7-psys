@@ -60,11 +60,19 @@ actual=$(git -C "$SRC_DIR" rev-parse HEAD)
 echo "==> HAL source pinned at $PINNED_HAL_COMMIT"
 
 # Link against the Intel April imaging binaries when provided.
+# The checkout's .pc files declare prefix=/usr (installed form), so rewrite
+# prefix to the checkout root and prepend an override dir to PKG_CONFIG_PATH.
+pc_override_dir=""
 if [[ -n $IPU7_BINS_DIR ]]; then
-    export PKG_CONFIG_PATH="$IPU7_BINS_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-    echo "==> using Intel imaging binaries (pkg-config): $IPU7_BINS_DIR/lib/pkgconfig"
+    pc_override_dir=$(mktemp -d)
+    trap 'rm -rf "$pc_override_dir"' EXIT
+    for pc in "$IPU7_BINS_DIR"/lib/pkgconfig/ia_imaging-*.pc; do
+        sed "s|^prefix=.*|prefix=$IPU7_BINS_DIR|" "$pc" > "$pc_override_dir/$(basename "$pc")"
+    done
+    export PKG_CONFIG_PATH="$pc_override_dir${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    echo "==> using Intel April imaging binaries: $IPU7_BINS_DIR"
 else
-    echo "==> IPU7_BINS_DIR not set; using the default pkg-config search path"
+    echo "==> IPU7_BINS_DIR not set; using default pkg-config (system libs)"
     echo "    (set IPU7_BINS_DIR to your ipu7-camera-bins checkout to match the reference build)"
 fi
 
