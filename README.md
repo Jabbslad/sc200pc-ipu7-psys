@@ -38,10 +38,9 @@ automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
 - Panther Lake system with IPU7P5 and the SC200PC (`ACPI\SSLC2000`).
 - The `intel-ipu7-camera` stack: IPU7 kernel drivers (DKMS), April firmware, and
   the proprietary `libia_*` libraries (Intel's `ipu7-camera-bins`).
-- To build the HAL plugin from source: the Intel **April** imaging binaries
-  checkout (`ipu7-camera-bins` @ tag `20260406_1900_297`) with its
-  `lib/pkgconfig`, plus `cmake` and the usual HAL build deps. Point
-  `IPU7_BINS_DIR` at that checkout (see "Building the HAL plugin").
+- To build the HAL plugin from source: `cmake`, a C++ toolchain, and the usual
+  HAL build deps (`libdrm`, `jsoncpp`, etc.). The build auto-clones Intel's
+  public `ipu7-camera-bins` (April tag) for the AIQ/CCA/AIC headers and libs.
 - `dkms`, kernel headers for your running kernel, `patch`, `gst-plugins-*`.
 
 ## Install
@@ -105,15 +104,15 @@ run it standalone:
 ./scripts/build-hal-plugin.sh   # clones the fork, builds, writes artifacts/ipu75xa.so
 ```
 
-Building requires the Intel IPU7 camera dev dependencies (AIQ/CCA/AIC headers
-and libraries from `ipu7-camera-bins`) plus `cmake` and the usual HAL build deps.
-Set `IPU7_BINS_DIR` to your **April** `ipu7-camera-bins` checkout so pkg-config
-resolves `ia_imaging-ipu75xa` to the April headers/libs and the build reproduces
-the reference plugin; if unset, the build links against whatever pkg-config finds
-by default (typically the system libraries) and the result will differ.
+The build auto-clones Intel's public `ipu7-camera-bins` repo at the pinned
+April tag (`20260406_1900_297`) for the AIQ/CCA/AIC headers and libraries, and
+links against them via a pkg-config prefix override (the bins' `.pc` files
+declare `prefix=/usr`, so it is rewritten to the cloned path). No extra setup is
+needed on a clean machine; set `IPU7_BINS_DIR` to an existing checkout to skip
+the clone (offline, or to use a specific copy).
 
 ```sh
-sudo IPU7_BINS_DIR=/path/to/ipu7-camera-bins-april ./scripts/sc200pc-apply.sh install
+sudo ./scripts/sc200pc-apply.sh install
 ```
 
 ## Licensing

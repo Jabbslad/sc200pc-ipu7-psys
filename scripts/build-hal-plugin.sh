@@ -27,13 +27,17 @@ PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-73fbf9023ab64d9fb780dbe082e9fdca2b16a0d3}
 SRC_DIR=${SRC_DIR:-"$REPO_ROOT/build/ipu7-camera-hal"}
 BUILD_OUT=${BUILD_OUT:-"$SRC_DIR/out"}
 ARTIFACTS=${ARTIFACTS:-"$REPO_ROOT/artifacts"}
-# Intel imaging binaries checkout (ipu7-camera-bins, April tag 20260406_1900_297).
-# Set this so pkg-config resolves ia_imaging-ipu75xa to the April headers/libs
-# and the build reproduces the reference plugin; otherwise the system (January)
-# libs are used and the result will differ.
-IPU7_BINS_DIR=${IPU7_BINS_DIR:-}
 PLUGIN_OUT="$ARTIFACTS/ipu75xa.so"
 SRC_SIDECAR="$ARTIFACTS/ipu75xa.so.src"
+
+# Intel imaging binaries (headers + libs the HAL links against). Public Intel
+# repo, pinned to the April release tag.
+BINS_URL=${BINS_URL:-https://github.com/intel/ipu7-camera-bins.git}
+BINS_TAG=${BINS_TAG:-20260406_1900_297}
+BINS_COMMIT=${BINS_COMMIT:-cead7320d84ee9ade4f60d74e935b16b5a760945}
+# Optional override: point at an existing ipu7-camera-bins checkout instead of
+# cloning (e.g. offline, or for local iteration).
+IPU7_BINS_DIR=${IPU7_BINS_DIR:-}
 # Reference build's plugin hash (this machine); informational for from-source builds.
 REFERENCE_PLUGIN_SHA256=c3c37b89876d39531aa9980af44ac2759a292dfa8c53b070a76e4344893a4988
 
@@ -59,22 +63,37 @@ actual=$(git -C "$SRC_DIR" rev-parse HEAD)
     fail "checked-out HAL source $actual != pinned $PINNED_HAL_COMMIT"
 echo "==> HAL source pinned at $PINNED_HAL_COMMIT"
 
-# Link against the Intel April imaging binaries when provided.
-# The checkout's .pc files declare prefix=/usr (installed form), so rewrite
-# prefix to the checkout root and prepend an override dir to PKG_CONFIG_PATH.
-pc_override_dir=""
-if [[ -n $IPU7_BINS_DIR ]]; then
-    pc_override_dir=$(mktemp -d)
-    trap 'rm -rf "$pc_override_dir"' EXIT
-    for pc in "$IPU7_BINS_DIR"/lib/pkgconfig/ia_imaging-*.pc; do
-        sed "s|^prefix=.*|prefix=$IPU7_BINS_DIR|" "$pc" > "$pc_override_dir/$(basename "$pc")"
-    done
-    export PKG_CONFIG_PATH="$pc_override_dir${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-    echo "==> using Intel April imaging binaries: $IPU7_BINS_DIR"
-else
-    echo "==> IPU7_BINS_DIR not set; using default pkg-config (system libs)"
-    echo "    (set IPU7_BINS_DIR to your ipu7-camera-bins checkout to match the reference build)"
-fi
+# Provision the Intel imaging binaries: clone the public repo at the pinned
+# April tag, or use a provided checkout (IPU7_BINS_DIR).
+resolve_bins() {
+    if [[ -n $IPU7_BINS_DIR ]]; then
+        BINS=$IPU7_BINS_DIR
+        echo "==> using provided Intel bins: $BINS"
+        return 0
+    fi
+    BINS="$REPO_ROOT/build/ipu7-camera-bins"
+    if [[ -d $BINS/.git ]] && [[ $(git -C "$BINS" rev-parse HEAD 2>/dev/null) == "$BINS_COMMIT" ]]; then
+        echo "==> Intel bins already cloned at $BINS_TAG"
+    else
+        echo "==> fetching $BINS_URL (tag $BINS_TAG)"
+        rm -rf "$BINS"
+        git clone --depth 1 --branch "$BINS_TAG" "$BINS_URL" "$BINS"
+    fi
+    local head
+    head=$(git -C "$BINS" rev-parse HEAD)
+    [[ $head == "$BINS_COMMIT" ]] || fail "Intel bins checkout $head != pinned $BINS_COMMIT"
+}
+resolve_bins
+
+# Point pkg-config at the bins. The checkout's .pc files declare prefix=/usr
+# (installed form), so rewrite prefix to the bins root into a temp override dir.
+pc_override_dir=$(mktemp -d)
+trap 'rm -rf "$pc_override_dir"' EXIT
+for pc in "$BINS"/lib/pkgconfig/ia_imaging-*.pc; do
+    sed "s|^prefix=.*|prefix=$BINS|" "$pc" > "$pc_override_dir/$(basename "$pc")"
+done
+export PKG_CONFIG_PATH="$pc_override_dir${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+echo "==> using Intel April imaging binaries: $BINS"
 
 echo "==> configuring (RelWithDebInfo, ENABLE_DOL_FEATURE=ON, policy>=3.5)"
 # Clean configure: only reached when no successful build exists yet (sidecar
