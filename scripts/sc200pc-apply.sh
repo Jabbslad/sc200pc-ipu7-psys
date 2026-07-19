@@ -72,6 +72,10 @@ usage() {
     cat <<'EOF'
 Usage: sc200pc-apply.sh install|apply|status|rollback|install-hook
 
+Run as your normal user. Downloads, clones, and builds run as you (keeping
+build/ and artifacts/ user-owned); the tool prompts for your sudo password
+only for system-level changes (DKMS, /etc, /usr).
+
   install       First-time setup: fetch AIQB + build plugin + install + hook.
                 (Place the out-of-band graph in ./artifacts first.)
   apply         Idempotent re-apply (run by the pacman hook; no downloads).
@@ -88,6 +92,14 @@ EOF
 
 fail() { echo "error: $*" >&2; exit 1; }
 require_root() { [[ $EUID -eq 0 ]] || fail "run this action through sudo"; }
+# Re-exec the requested action under sudo only when it needs root, prompting for
+# the password at that point. Build/fetch/download run unprivileged so build/
+# and artifacts/ stay user-owned; only the system-level actions run as root.
+need_root() {
+    [[ $EUID -eq 0 ]] && return 0
+    echo "sc200pc-apply: '$1' needs root privileges; asking for sudo…"
+    exec sudo -- "$SCRIPT_DIR/sc200pc-apply.sh" "$1"
+}
 sha_of() { sha256sum -- "$1" 2>/dev/null | awk '{print $1}'; }
 verify_hash() { # path expected label
     [[ -f $1 ]] || fail "$3 missing: $1"
@@ -318,9 +330,13 @@ do_apply() {
 }
 
 do_install() {
+    # User-level provisioning: download, build, graph check (no root).
     ensure_aiqb
     ensure_plugin
     require_graph
+    # Privileged part (DKMS, ISYS overlay, config, plugin, hook) as root.
+    need_root __install_privileged
+    # Reached only when already running as root.
     do_apply
     do_install_hook
 }
@@ -391,10 +407,11 @@ do_install_hook() {
 
 case ${1:-} in
     install) do_install ;;
-    apply) do_apply ;;
+    apply) need_root apply; do_apply ;;
     status) do_status ;;
-    rollback) do_rollback ;;
-    install-hook) do_install_hook ;;
+    rollback) need_root rollback; do_rollback ;;
+    install-hook) need_root install-hook; do_install_hook ;;
+    __install_privileged) require_root; do_apply; do_install_hook ;;
     -h|--help|help) usage ;;
     *) usage >&2; exit 2 ;;
 esac

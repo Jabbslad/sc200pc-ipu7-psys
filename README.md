@@ -52,8 +52,9 @@ automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
 # 2. One command does everything else: fetches the AIQB from the Samsung
 #    package, builds the DOL2 HAL plugin from the project fork, installs the
 #    DKMS sensor driver + ISYS overlay + HAL config, and sets up the pacman
-#    re-apply hook:
-sudo ./scripts/sc200pc-apply.sh install
+#    re-apply hook. Run it as your normal user — it downloads/clones/builds as
+#    you and prompts for your sudo password only for the system-level steps:
+./scripts/sc200pc-apply.sh install
 
 # 3. Activate the kernel-side changes:
 sudo modprobe -r sc200pc intel_ipu7_isys && sudo modprobe intel_ipu7_isys && sudo modprobe sc200pc
@@ -61,11 +62,10 @@ sudo modprobe -r sc200pc intel_ipu7_isys && sudo modprobe intel_ipu7_isys && sud
 ```
 
 `install` is idempotent: it reuses an already-fetched AIQB and skips the plugin
-build if `artifacts/` already has one built from the pinned source commit. Run
-`scripts/build-hal-plugin.sh` first as your own user if you prefer user-owned
-build artifacts (otherwise the `sudo install` build is root-owned but
-git-ignored). `sc200pc-apply.sh status` reports every component; `rollback`
-undoes the changes.
+build if `artifacts/` already has one built from the pinned source commit. If a
+previous `sudo` run left `build/` or `artifacts/` root-owned, fix ownership once
+with `sudo chown -R $USER build/ artifacts/` before building as your user.
+`sc200pc-apply.sh status` reports every component; `rollback` undoes the changes.
 
 ## What survives what
 

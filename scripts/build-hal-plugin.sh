@@ -43,6 +43,12 @@ REFERENCE_PLUGIN_SHA256=c3c37b89876d39531aa9980af44ac2759a292dfa8c53b070a76e4344
 
 fail() { echo "error: $*" >&2; exit 1; }
 sha_of() { sha256sum -- "$1" 2>/dev/null | awk '{print $1}'; }
+require_writable() { # dir — must be user-writable (a prior `sudo` run may have left it root-owned)
+    local d=$1
+    if [[ -e $d && ! -w $d ]]; then
+        fail "$d is not writable by $USER (root-owned from a previous sudo run). Fix with: sudo chown -R $USER \"$d\""
+    fi
+}
 
 # Idempotent skip: already built from the pinned commit?
 if [[ -f $PLUGIN_OUT && -f $SRC_SIDECAR && $(cat "$SRC_SIDECAR") == "$PINNED_HAL_COMMIT" ]]; then
@@ -50,6 +56,10 @@ if [[ -f $PLUGIN_OUT && -f $SRC_SIDECAR && $(cat "$SRC_SIDECAR") == "$PINNED_HAL
     echo "    sha256: $(sha_of "$PLUGIN_OUT")"
     exit 0
 fi
+
+# Build/artifacts must be user-writable before any clone/build/install.
+require_writable "$REPO_ROOT/build"
+require_writable "$ARTIFACTS"
 
 echo "==> fetching $FORK_URL ($FORK_BRANCH)"
 if [[ -d $SRC_DIR/.git ]]; then
@@ -103,7 +113,9 @@ rm -rf "$BUILD_OUT"
 cmake -B "$BUILD_OUT" -S "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DENABLE_DOL_FEATURE=ON
+    -DENABLE_DOL_FEATURE=ON \
+    -DBUILD_CAMHAL_PLUGIN=ON \
+    -DBUILD_CAMHAL_ADAPTOR=ON
 
 echo "==> building"
 cmake --build "$BUILD_OUT" -j"$(nproc)"
