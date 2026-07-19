@@ -23,13 +23,15 @@ channels (long + short exposure) that the IPU7 merges into 1920×1080 NV12.
 
 These are OEM/Intel artifacts with **unresolved redistribution rights**, so they
 are **not committed**. Place them in `./artifacts/` (git-ignored); the tool
-verifies each by SHA-256 and refuses to install a mismatch.
+verifies each by SHA-256 and refuses to install a mismatch. (`ipu75xa.so` is
+built from source — its hash is environment-specific; see "Building the HAL
+plugin" below.)
 
 | File | SHA-256 | Source |
 |---|---|---|
 | `SC200PC_KAFC917_PTL.aiqb` | `65b75702…5c99e` | Samsung OEM package (`scripts/download-windows-driver.sh`, then extract `camera/SC200PC_KAFC917_PTL.aiqb`) |
 | `SC200PC_KAFC917.IPU75XA.bin` | `c7fb4b2c…a6cc` | IPU75XA DOL2 static graph — **obtained out-of-band** (a project release asset or the private investigation repo). See "The graph" below. |
-| `ipu75xa.so` | `c3c37b89…4988` | DOL2 HAL plugin build (Intel `ipu7-camera-hal` + the SC200PC DOL2 wiring) |
+| `ipu75xa.so` | `c3c37b89…4988` (reference) | Build from the project fork — `scripts/build-hal-plugin.sh` clones `github.com/Jabbslad/ipu7-camera-hal` branch `sc200pc-dol2` (pinned source `73fbf90…`). See "Building the HAL plugin" below. |
 
 ## Prerequisites
 
@@ -72,6 +74,27 @@ a different binary ABI than the Windows generation that produced the OEM graph
 instead of packed RAW10), so it is a full decode/re-serialize, not a byte diff —
 and a diff would be OEM-derived anyway. Obtain the validated graph
 (`c7fb4b2c…`) out-of-band and let the tool verify it.
+
+## Building the HAL plugin
+
+`ipu75xa.so` is Intel's IPU75XA HAL plugin (Apache-2.0) with the project's
+SC200PC DOL2 enablement layered on top. It is **not** a binary download — you
+build it from the project fork of Intel's `ipu7-camera-hal`.
+
+The fork branch `sc200pc-dol2` is Intel's April release tag (`ef307675` /
+`20260406_1900_297`) plus 18 SC200PC DOL2 commits. The build script pins the
+exact source commit, so the build is reproducible **from source**; the resulting
+binary hash is environment-specific and only matches the reference `c3c37b89…`
+on the reference machine.
+
+```sh
+./scripts/build-hal-plugin.sh   # clones the fork, builds, writes artifacts/ipu75xa.so
+# then install using your build's hash (printed by the script):
+sudo PLUGIN_SHA256=<your-build-hash> ./scripts/sc200pc-apply.sh apply
+```
+
+Building requires the Intel IPU7 camera dev dependencies (AIQ/CCA/AIC headers
+and libraries from `ipu7-camera-bins`) plus `cmake` and the usual HAL build deps.
 
 ## Licensing
 

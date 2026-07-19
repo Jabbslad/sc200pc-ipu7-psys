@@ -23,7 +23,10 @@ SENSOR_VERSION=0.9.0
 IPU7_DKMS=ipu7-drivers/1.0.5
 AIQB_SHA256=65b75702f33e880f9976cf51a3afa41e577dd33c1f1995e9a9fdfd1e29e5c99e
 GRAPH_SHA256=c7fb4b2c96e9ffba6c87a902d235347a50dc81e52921347efca0003171c3a6cc
-PLUGIN_SHA256=c3c37b89876d39531aa9980af44ac2759a292dfa8c53b070a76e4344893a4988
+# Reference build's plugin hash. Override with your own build's hash when you
+# compile from the pinned fork source (scripts/build-hal-plugin.sh); the source
+# pin, not the binary hash, is the reproducibility anchor for from-source builds.
+PLUGIN_SHA256=${PLUGIN_SHA256:-c3c37b89876d39531aa9980af44ac2759a292dfa8c53b070a76e4344893a4988}
 FIRMWARE_SHA256=8ce12bc3c4355d589a8ad97bebbb036909e5985990ce1cf37789ce60fb52720f
 CONFIG_SHA256=703616ce0ba9e709ee2d0ead6c0f6ba2ba39f3ad25d884f72f51b58739c41d9b
 SENSOR_JSON_SHA256=31dff3d321898bc6bc9c8477d71e2d1f33238b477c515dd9a93c32ea0489b64e

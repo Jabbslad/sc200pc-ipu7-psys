@@ -16,3 +16,8 @@ modules.order
 # Editor / OS
 *.swp
 .DS_Store
+
+# Downloaded OEM package (scripts/download-windows-driver.sh) -- proprietary, never committed
+/downloads/
+# HAL source clone + build tree (scripts/build-hal-plugin.sh)
+/build/
