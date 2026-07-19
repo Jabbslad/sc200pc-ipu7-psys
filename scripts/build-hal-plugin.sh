@@ -122,10 +122,20 @@ if ! echo '#include <jsoncpp/json/json.h>' | c++ -E -x c++ - >/dev/null 2>&1; th
     CXXFLAGS_EXTRA="-I$BUILD_OUT/compat-include"
     echo "==> using jsoncpp compat include: $BUILD_OUT/compat-include"
 fi
+# Force the plugin to link libstdc++ DYNAMICALLY. Without this, the c++ driver
+# leaves libstdc++ off the link line and the plugin ends up with a statically
+# embedded libstdc++ (thousands of std:: symbols, including a weak
+# std::istream::_M_extract). At runtime GStreamer loads the plugin RTLD_GLOBAL,
+# so jsoncpp's decodeDouble resolves _M_extract to the plugin's embedded copy
+# instead of the system libstdc++ -- two C++ runtimes interpose and the HAL
+# segfaults in JsonParserBase::openJsonFile at plugin init. The reference build
+# (R19-proven c3c37b89) carried this exact flag and links libstdc++ dynamically.
 cmake -B "$BUILD_OUT" -S "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_CXX_FLAGS="$CXXFLAGS_EXTRA" \
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bdynamic -l:libstdc++.so.6" \
     -DENABLE_DOL_FEATURE=ON \
     -DBUILD_CAMHAL_PLUGIN=ON \
     -DBUILD_CAMHAL_ADAPTOR=ON \
