@@ -1,6 +1,9 @@
 # User-supplied OEM/Intel artifacts (verified by hash, never committed)
 /artifacts/
 
+# Samsung/Intel OEM package download (proprietary; never committed)
+/downloads/
+
 # Kernel build products
 *.ko
 *.ko.zst

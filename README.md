@@ -17,21 +17,21 @@ channels (long + short exposure) that the IPU7 merges into 1920×1080 NV12.
 | `overlay/` | `ipu7-isys-dualvc-default-route.patch` — ISYS dual-VC route for CSI2 port 0 |
 | `scripts/sc200pc-apply.sh` | single idempotent deployment tool (`apply`/`status`/`rollback`/`install`) |
 | `scripts/download-windows-driver.sh` | downloads the Samsung OEM package (source of the AIQB) |
+| `scripts/build-hal-plugin.sh` | idempotent build of the DOL2 HAL plugin from the project fork |
 | `scripts/sc200pc-reapply.hook` | pacman hook that re-applies after an `intel-ipu7-camera` upgrade |
 
-## What you must supply (not distributed here)
+## Artifacts (not distributed here)
 
-These are OEM/Intel artifacts with **unresolved redistribution rights**, so they
-are **not committed**. Place them in `./artifacts/` (git-ignored); the tool
-verifies each by SHA-256 and refuses to install a mismatch. (`ipu75xa.so` is
-built from source — its hash is environment-specific; see "Building the HAL
-plugin" below.)
+These OEM/Intel artifacts have **unresolved redistribution rights**, so they are
+**not committed**. `sc200pc-apply.sh install` provisions two of them
+automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
+**only the static graph is a manual step**.
 
-| File | SHA-256 | Source |
+| File | SHA-256 | How it's obtained |
 |---|---|---|
-| `SC200PC_KAFC917_PTL.aiqb` | `65b75702…5c99e` | Samsung OEM package (`scripts/download-windows-driver.sh`, then extract `camera/SC200PC_KAFC917_PTL.aiqb`) |
-| `SC200PC_KAFC917.IPU75XA.bin` | `c7fb4b2c…a6cc` | IPU75XA DOL2 static graph — **obtained out-of-band** (a project release asset or the private investigation repo). See "The graph" below. |
-| `ipu75xa.so` | `c3c37b89…4988` (reference) | Build from the project fork — `scripts/build-hal-plugin.sh` clones `github.com/Jabbslad/ipu7-camera-hal` branch `sc200pc-dol2` (pinned source `73fbf90…`). See "Building the HAL plugin" below. |
+| `SC200PC_KAFC917_PTL.aiqb` | `65b75702…5c99e` | **Auto-fetched** by `install` from the Samsung OEM package (`scripts/download-windows-driver.sh`) |
+| `ipu75xa.so` | `c3c37b89…4988` (reference) | **Auto-built** by `install` from the project fork (`github.com/Jabbslad/ipu7-camera-hal`, branch `sc200pc-dol2`, pinned source `73fbf90…`). See "Building the HAL plugin" below. |
+| `SC200PC_KAFC917.IPU75XA.bin` | `c7fb4b2c…a6cc` | **You provide** — IPU75XA DOL2 static graph, obtained out-of-band (a project release asset or the private investigation repo). See "The graph" below. |
 
 ## Prerequisites
 
@@ -43,11 +43,13 @@ plugin" below.)
 ## Install
 
 ```sh
-# 1. Obtain the artifacts (see table above) and drop them into ./artifacts/
-#    e.g. the AIQB from the Samsung package:
-./scripts/download-windows-driver.sh        # downloads + extracts the OEM package
+# 1. Place the ONE manual artifact — the out-of-band static graph:
+#      artifacts/SC200PC_KAFC917.IPU75XA.bin   (sha256 c7fb4b2c…a6cc)
 
-# 2. First-time setup (DKMS sensor driver, ISYS overlay, HAL config, hook):
+# 2. One command does everything else: fetches the AIQB from the Samsung
+#    package, builds the DOL2 HAL plugin from the project fork, installs the
+#    DKMS sensor driver + ISYS overlay + HAL config, and sets up the pacman
+#    re-apply hook:
 sudo ./scripts/sc200pc-apply.sh install
 
 # 3. Activate the kernel-side changes:
@@ -55,8 +57,12 @@ sudo modprobe -r sc200pc intel_ipu7_isys && sudo modprobe intel_ipu7_isys && sud
 #    (or reboot)
 ```
 
-`sc200pc-apply.sh status` reports every component and its hash at any time.
-`sc200pc-apply.sh rollback` undoes the config, ISYS overlay, and HAL plugin.
+`install` is idempotent: it reuses an already-fetched AIQB and skips the plugin
+build if `artifacts/` already has one built from the pinned source commit. Run
+`scripts/build-hal-plugin.sh` first as your own user if you prefer user-owned
+build artifacts (otherwise the `sudo install` build is root-owned but
+git-ignored). `sc200pc-apply.sh status` reports every component; `rollback`
+undoes the changes.
 
 ## What survives what
 
@@ -87,10 +93,12 @@ exact source commit, so the build is reproducible **from source**; the resulting
 binary hash is environment-specific and only matches the reference `c3c37b89…`
 on the reference machine.
 
+`sc200pc-apply.sh install` runs this build automatically (idempotent — it skips
+if `artifacts/ipu75xa.so` was already built from the pinned commit). You can also
+run it standalone:
+
 ```sh
 ./scripts/build-hal-plugin.sh   # clones the fork, builds, writes artifacts/ipu75xa.so
-# then install using your build's hash (printed by the script):
-sudo PLUGIN_SHA256=<your-build-hash> ./scripts/sc200pc-apply.sh apply
 ```
 
 Building requires the Intel IPU7 camera dev dependencies (AIQ/CCA/AIC headers
