@@ -38,6 +38,10 @@ automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
 - Panther Lake system with IPU7P5 and the SC200PC (`ACPI\SSLC2000`).
 - The `intel-ipu7-camera` stack: IPU7 kernel drivers (DKMS), April firmware, and
   the proprietary `libia_*` libraries (Intel's `ipu7-camera-bins`).
+- To build the HAL plugin from source: the Intel **April** imaging binaries
+  checkout (`ipu7-camera-bins` @ tag `20260406_1900_297`) with its
+  `lib/pkgconfig`, plus `cmake` and the usual HAL build deps. Point
+  `IPU7_BINS_DIR` at that checkout (see "Building the HAL plugin").
 - `dkms`, kernel headers for your running kernel, `patch`, `gst-plugins-*`.
 
 ## Install
@@ -103,6 +107,14 @@ run it standalone:
 
 Building requires the Intel IPU7 camera dev dependencies (AIQ/CCA/AIC headers
 and libraries from `ipu7-camera-bins`) plus `cmake` and the usual HAL build deps.
+Set `IPU7_BINS_DIR` to your **April** `ipu7-camera-bins` checkout so pkg-config
+resolves `ia_imaging-ipu75xa` to the April headers/libs and the build reproduces
+the reference plugin; if unset, the build links against whatever pkg-config finds
+by default (typically the system libraries) and the result will differ.
+
+```sh
+sudo IPU7_BINS_DIR=/path/to/ipu7-camera-bins-april ./scripts/sc200pc-apply.sh install
+```
 
 ## Licensing
 

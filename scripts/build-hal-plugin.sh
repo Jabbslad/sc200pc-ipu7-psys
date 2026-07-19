@@ -27,6 +27,11 @@ PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-73fbf9023ab64d9fb780dbe082e9fdca2b16a0d3}
 SRC_DIR=${SRC_DIR:-"$REPO_ROOT/build/ipu7-camera-hal"}
 BUILD_OUT=${BUILD_OUT:-"$SRC_DIR/out"}
 ARTIFACTS=${ARTIFACTS:-"$REPO_ROOT/artifacts"}
+# Intel imaging binaries checkout (ipu7-camera-bins, April tag 20260406_1900_297).
+# Set this so pkg-config resolves ia_imaging-ipu75xa to the April headers/libs
+# and the build reproduces the reference plugin; otherwise the system (January)
+# libs are used and the result will differ.
+IPU7_BINS_DIR=${IPU7_BINS_DIR:-}
 PLUGIN_OUT="$ARTIFACTS/ipu75xa.so"
 SRC_SIDECAR="$ARTIFACTS/ipu75xa.so.src"
 # Reference build's plugin hash (this machine); informational for from-source builds.
@@ -54,9 +59,23 @@ actual=$(git -C "$SRC_DIR" rev-parse HEAD)
     fail "checked-out HAL source $actual != pinned $PINNED_HAL_COMMIT"
 echo "==> HAL source pinned at $PINNED_HAL_COMMIT"
 
-echo "==> configuring (RelWithDebInfo, ENABLE_DOL_FEATURE=ON)"
+# Link against the Intel April imaging binaries when provided.
+if [[ -n $IPU7_BINS_DIR ]]; then
+    export PKG_CONFIG_PATH="$IPU7_BINS_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    echo "==> using Intel imaging binaries (pkg-config): $IPU7_BINS_DIR/lib/pkgconfig"
+else
+    echo "==> IPU7_BINS_DIR not set; using the default pkg-config search path"
+    echo "    (set IPU7_BINS_DIR to your ipu7-camera-bins checkout to match the reference build)"
+fi
+
+echo "==> configuring (RelWithDebInfo, ENABLE_DOL_FEATURE=ON, policy>=3.5)"
+# Clean configure: only reached when no successful build exists yet (sidecar
+# absent), so removing a stale/partial build tree is safe and avoids reusing a
+# poisoned CMake cache from a failed run.
+rm -rf "$BUILD_OUT"
 cmake -B "$BUILD_OUT" -S "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DENABLE_DOL_FEATURE=ON
 
 echo "==> building"
