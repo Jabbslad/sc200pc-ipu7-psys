@@ -110,12 +110,28 @@ echo "==> configuring (RelWithDebInfo, ENABLE_DOL_FEATURE=ON, policy>=3.5)"
 # absent), so removing a stale/partial build tree is safe and avoids reusing a
 # poisoned CMake cache from a failed run.
 rm -rf "$BUILD_OUT"
+# jsoncpp include-layout shim: the HAL includes <jsoncpp/json/json.h> (Debian
+# layout), while e.g. Arch installs jsoncpp headers as <json/json.h>. When the
+# Debian layout is absent, generate a compat include dir for the build.
+CXXFLAGS_EXTRA=""
+if ! echo '#include <jsoncpp/json/json.h>' | c++ -E -x c++ - >/dev/null 2>&1; then
+    json_includedir=$(pkg-config --variable=includedir jsoncpp 2>/dev/null || echo /usr/include)
+    [[ -f $json_includedir/json/json.h ]] || fail "jsoncpp development headers not found (install jsoncpp)"
+    mkdir -p "$BUILD_OUT/compat-include/jsoncpp"
+    ln -sfn "$json_includedir/json" "$BUILD_OUT/compat-include/jsoncpp/json"
+    CXXFLAGS_EXTRA="-I$BUILD_OUT/compat-include"
+    echo "==> using jsoncpp compat include: $BUILD_OUT/compat-include"
+fi
 cmake -B "$BUILD_OUT" -S "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_FLAGS="$CXXFLAGS_EXTRA" \
     -DENABLE_DOL_FEATURE=ON \
     -DBUILD_CAMHAL_PLUGIN=ON \
-    -DBUILD_CAMHAL_ADAPTOR=ON
+    -DBUILD_CAMHAL_ADAPTOR=ON \
+    -DIPU_VERSIONS=ipu75xa \
+    -DUSE_STATIC_GRAPH=ON \
+    -DUSE_STATIC_GRAPH_AUTOGEN=ON
 
 echo "==> building"
 cmake --build "$BUILD_OUT" -j"$(nproc)"
