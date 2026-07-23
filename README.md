@@ -30,7 +30,7 @@ automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
 | File | SHA-256 | How it's obtained |
 |---|---|---|
 | `SC200PC_KAFC917_PTL.aiqb` | `65b75702…5c99e` | **Auto-fetched** by `install` from the Samsung OEM package (`scripts/download-windows-driver.sh`) |
-| `ipu75xa.so` | `c3c37b89…4988` (reference) | **Auto-built** by `install` from the project fork (`github.com/Jabbslad/ipu7-camera-hal`, branch `sc200pc-dol2`, pinned source `73fbf90…`). See "Building the HAL plugin" below. |
+| `ipu75xa.so` | `768516aa…f50` (reference) | **Auto-built** by `install` from the project fork (`github.com/Jabbslad/ipu7-camera-hal`, branch `sc200pc-dol2`, pinned source `d75f2b0…`). See "Building the HAL plugin" below. |
 | `SC200PC_KAFC917.IPU75XA.bin` | `c7fb4b2c…a6cc` | **You provide** — IPU75XA DOL2 static graph, obtained out-of-band (a project release asset or the private investigation repo). See "The graph" below. |
 
 ## Prerequisites
@@ -91,9 +91,9 @@ SC200PC DOL2 enablement layered on top. It is **not** a binary download — you
 build it from the project fork of Intel's `ipu7-camera-hal`.
 
 The fork branch `sc200pc-dol2` is Intel's April release tag (`ef307675` /
-`20260406_1900_297`) plus 18 SC200PC DOL2 commits. The build script pins the
+`20260406_1900_297`) plus 23 SC200PC DOL2 commits. The build script pins the
 exact source commit, so the build is reproducible **from source**; the resulting
-binary hash is environment-specific and only matches the reference `c3c37b89…`
+binary hash is environment-specific and only matches the reference `768516aa…`
 on the reference machine.
 
 `sc200pc-apply.sh install` runs this build automatically (idempotent — it skips

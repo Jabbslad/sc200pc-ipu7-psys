@@ -22,8 +22,8 @@ REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
 FORK_URL=${FORK_URL:-https://github.com/Jabbslad/ipu7-camera-hal.git}
 FORK_BRANCH=${FORK_BRANCH:-sc200pc-dol2}
-# Validated source tip: Intel April tag + 18 SC200PC DOL2 commits.
-PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-73fbf9023ab64d9fb780dbe082e9fdca2b16a0d3}
+# Validated source tip: Intel April tag + 23 SC200PC DOL2 commits.
+PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-d75f2b07d6947135ca8c4597b919c199b68ccdb3}
 SRC_DIR=${SRC_DIR:-"$REPO_ROOT/build/ipu7-camera-hal"}
 BUILD_OUT=${BUILD_OUT:-"$SRC_DIR/out"}
 ARTIFACTS=${ARTIFACTS:-"$REPO_ROOT/artifacts"}
@@ -39,7 +39,7 @@ BINS_COMMIT=${BINS_COMMIT:-cead7320d84ee9ade4f60d74e935b16b5a760945}
 # cloning (e.g. offline, or for local iteration).
 IPU7_BINS_DIR=${IPU7_BINS_DIR:-}
 # Reference build's plugin hash (this machine); informational for from-source builds.
-REFERENCE_PLUGIN_SHA256=c3c37b89876d39531aa9980af44ac2759a292dfa8c53b070a76e4344893a4988
+REFERENCE_PLUGIN_SHA256=768516aa0ea3f64d85b2dfc3943ffc18c4ed446cbca8d3868a2278188e5acf50
 
 fail() { echo "error: $*" >&2; exit 1; }
 sha_of() { sha256sum -- "$1" 2>/dev/null | awk '{print $1}'; }
@@ -128,8 +128,8 @@ fi
 # std::istream::_M_extract). At runtime GStreamer loads the plugin RTLD_GLOBAL,
 # so jsoncpp's decodeDouble resolves _M_extract to the plugin's embedded copy
 # instead of the system libstdc++ -- two C++ runtimes interpose and the HAL
-# segfaults in JsonParserBase::openJsonFile at plugin init. The reference build
-# (R19-proven c3c37b89) carried this exact flag and links libstdc++ dynamically.
+# segfaults in JsonParserBase::openJsonFile at plugin init. The clean live-canary
+# reference build (768516aa) carried this exact flag and links libstdc++ dynamically.
 cmake -B "$BUILD_OUT" -S "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
