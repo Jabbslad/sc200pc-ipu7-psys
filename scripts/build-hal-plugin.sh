@@ -22,8 +22,8 @@ REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
 FORK_URL=${FORK_URL:-https://github.com/Jabbslad/ipu7-camera-hal.git}
 FORK_BRANCH=${FORK_BRANCH:-sc200pc-dol2}
-# Validated source tip: Intel April tag + 23 SC200PC DOL2 commits.
-PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-d75f2b07d6947135ca8c4597b919c199b68ccdb3}
+# Adaptive source tip: Intel April tag + 24 SC200PC DOL2 commits.
+PINNED_HAL_COMMIT=${PINNED_HAL_COMMIT:-1dac1fda169b80ac23e1ffa6f9a49844f435f59e}
 SRC_DIR=${SRC_DIR:-"$REPO_ROOT/build/ipu7-camera-hal"}
 BUILD_OUT=${BUILD_OUT:-"$SRC_DIR/out"}
 ARTIFACTS=${ARTIFACTS:-"$REPO_ROOT/artifacts"}
@@ -39,7 +39,7 @@ BINS_COMMIT=${BINS_COMMIT:-cead7320d84ee9ade4f60d74e935b16b5a760945}
 # cloning (e.g. offline, or for local iteration).
 IPU7_BINS_DIR=${IPU7_BINS_DIR:-}
 # Reference build's plugin hash (this machine); informational for from-source builds.
-REFERENCE_PLUGIN_SHA256=768516aa0ea3f64d85b2dfc3943ffc18c4ed446cbca8d3868a2278188e5acf50
+REFERENCE_PLUGIN_SHA256=decb16bdcac15d0cb10455ac29c54e548e66ba799acf97502bfd8e3e83a7154c
 
 fail() { echo "error: $*" >&2; exit 1; }
 sha_of() { sha256sum -- "$1" 2>/dev/null | awk '{print $1}'; }

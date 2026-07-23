@@ -30,7 +30,7 @@ automatically into `./artifacts/` (git-ignored) and verifies each by SHA-256;
 | File | SHA-256 | How it's obtained |
 |---|---|---|
 | `SC200PC_KAFC917_PTL.aiqb` | `65b75702…5c99e` | **Auto-fetched** by `install` from the Samsung OEM package (`scripts/download-windows-driver.sh`) |
-| `ipu75xa.so` | `768516aa…f50` (reference) | **Auto-built** by `install` from the project fork (`github.com/Jabbslad/ipu7-camera-hal`, branch `sc200pc-dol2`, pinned source `d75f2b0…`). See "Building the HAL plugin" below. |
+| `ipu75xa.so` | `decb16bd…154c` (reference) | **Auto-built** by `install` from the project fork (`github.com/Jabbslad/ipu7-camera-hal`, branch `sc200pc-dol2`, pinned source `1dac1fd…`). See "Building the HAL plugin" below. |
 | `SC200PC_KAFC917.IPU75XA.bin` | `c7fb4b2c…a6cc` | **You provide** — IPU75XA DOL2 static graph, obtained out-of-band (a project release asset or the private investigation repo). See "The graph" below. |
 
 ## Prerequisites
@@ -91,9 +91,9 @@ SC200PC DOL2 enablement layered on top. It is **not** a binary download — you
 build it from the project fork of Intel's `ipu7-camera-hal`.
 
 The fork branch `sc200pc-dol2` is Intel's April release tag (`ef307675` /
-`20260406_1900_297`) plus 23 SC200PC DOL2 commits. The build script pins the
+`20260406_1900_297`) plus 24 SC200PC DOL2 commits. The build script pins the
 exact source commit, so the build is reproducible **from source**; the resulting
-binary hash is environment-specific and only matches the reference `768516aa…`
+binary hash is environment-specific and only matches the reference `decb16bd…`
 on the reference machine.
 
 `sc200pc-apply.sh install` runs this build automatically (idempotent — it skips
@@ -129,6 +129,23 @@ sudo ./scripts/sc200pc-apply.sh install
 
 ## Status
 
-Short-stream proof only: 1920×1080 NV12 at ~30 fps through `icamerasrc`, with
-AE/AWB convergence on a static scene. Sustained (30-minute), suspend/resume,
-reopen, privacy, and application-integration validation are **not** complete.
+The default policy is adaptive 1920×1080 with a declared **15–30 fps** range.
+The corrected `[118,33097] us` profile units remove the recurring dark/light
+pulse in the tested static scene. A representative settled low-light cadence
+was ~20.16 fps (`49.61 ms`); that is not a fixed mode or guaranteed floor. The
+current driver has one native 30-fps timing table and does not advertise fixed
+15/20/24/30 operation.
+
+The adaptive HAL keeps CCA's selected DOL pair authoritative and reports
+adjacent-SOF physical duration separately from nominal CCA/AIC timing. There is
+no slew limiter, late clamp, frame duplication, second CCA instance, or software
+ISP. `icamerasrc` can keep nominal 30/1 caps for compatibility while its buffer
+durations and delivered timestamps remain physical. This adaptive change has
+passed offline build and policy checks; its 300-frame dynamic-scene camera
+canary is still pending. Sustained (30-minute), suspend/resume, reopen, privacy,
+and application-integration validation are **not** complete.
+
+Future optional modes are fixed 15 fps for low power/low light, after a real
+sensor timing or decimation implementation exists, and experimental strict
+physical 30 fps using HAL-owned AE only if an offline AIC-injection/history gate
+passes. Neither mode is currently advertised.

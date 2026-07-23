@@ -92,7 +92,9 @@
           "supportedFeatures": [
             "MANUAL_EXPOSURE", "MANUAL_WHITE_BALANCE", "IMAGE_ENHANCEMENT",
             "NOISE_REDUCTION", "PER_FRAME_CONTROL", "SCENE_MODE" ],
-          "fpsRange": [ 15, 15, 15, 30, 30, 30 ],
+          // SC200PC DOL cadence varies with the CCA-selected exposure pair.
+          // Fixed 15/20/24/30 fps are not guaranteed by the current driver.
+          "fpsRange": [ 15, 30 ],
           "evRange": [ -6, 6 ],
           "evStep": [ 1, 3 ],
           "supportedAeMode": [ "AUTO", "MANUAL" ],
