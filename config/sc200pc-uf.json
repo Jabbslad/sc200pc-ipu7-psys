@@ -116,8 +116,8 @@
             // align with supportedAeExposureTimeRange
             // SC200PC contract (behavioral spec): exposure is in lines,
             // per-VC line time = 29.4985 us (pixel 155.94M/s, LLP 4600),
-            // clamp [4, FLL-8] lines at FLL 1130 -> [117994, 33097345] ns.
-            "sensor.info.exposureTimeRange": [ 117994, 33097345 ],
+            // clamp [4, FLL-8] lines at FLL 1130 -> [118, 33097] us.
+            "sensor.info.exposureTimeRange": [ 118, 33097 ],
             "sensor.info.activeArraySize": [ 0, 0, 1928, 1088 ],
             "sensor.info.pixelArraySize": [1928, 1088],
             // 0:RGGB, 1:GRBG, 2:GBRG, 3:BGGR, 4:RGB
